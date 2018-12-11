@@ -78,8 +78,11 @@ jobs:
     macos:
       xcode: "9.2.0"
     steps:
-      - checkout  
- 
+      - checkout   
+      - run:
+          name: install jazzy
+          command: |
+            sudo gem install jazzy --source http://rubygems.org
       - run:
           name: Install appledoc 
           command: |
@@ -92,8 +95,26 @@ jobs:
             pwd
 
       - run:
-          name: generate documents
+          name: generate apple documents
           command: bash ./Scripts/GenerateAppleDocs.sh
+
+      - run:
+          name: generate AWSMobileClient documents
+          command: |
+            currentversion=2.7.4 
+            cd AWSAuthSDK/
+            jazzy \
+              --clean \
+              --author Amanzon \
+              --author_url https://amazon.io \
+              --github_url https://github.com/aws-amplify/aws-sdk-ios \
+              --github-file-prefix https://github.com/aws-amplify/aws-sdk-ios/tree/currentversion \
+              --module-version $currentversion\
+              --xcodebuild-arguments -project,AWSAuthSDK.xcodeproj,-scheme,AWSMobileClient \
+              --module AWSMobileClient \
+              --output ../Documentation/jazz \
+              --theme apple
+            cd ..
 
       - run:
           name: copy documents
@@ -101,23 +122,33 @@ jobs:
             git config --local user.name "AWS"
             git checkout  gh-pages
             cp -R docs/html/*   docs/reference/
+            mkdir docs/reference/AWSMobileClient
+            cp -R Documentation/jazz/* docs/reference/AWSMobileClient
 
       - run:
           name: checkin documents
           command: |
-            git add docs/reference
-            git commit -m "Update document via CircleCI"
-            git push -q https://${GITHUB_TOKEN}@github.com/aws/aws-sdk-ios.git  
+            zip -r document.zip docs/reference/
+
+   #         git add docs/reference
+   #         git commit -m "Update document via CircleCI"
+   #         git push -q https://${GITHUB_TOKEN}@github.com/aws/aws-sdk-ios.git  
+      - store_artifacts:
+          path: document.zip
 
 workflows:
   version: 2
+
+  test_workflow:
+    jobs:
+        - release_appledoc
   build_and_test:
     jobs: 
       - build:
           filters:
             branches:
               only:
-                  - master
+                  - master1
       - release_carthage:
           filters:
             branches:
