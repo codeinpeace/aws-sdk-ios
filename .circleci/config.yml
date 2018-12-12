@@ -73,6 +73,45 @@ jobs:
       - run:
           name: Release cocoapods
           command : python3    cocoapods_release.py
+
+  release_jazzydoc:
+    # Specify the Xcode version to use
+    macos:
+      xcode: "10.1.0"
+    steps:
+      - checkout  
+      - run:
+          name: Install jazzy
+          command: |
+            sudo gem install jazzy --source http://rubygems.org
+
+
+      - run:
+          name: generate AWSMobileClient documents
+          command: |
+            currentversion=2.7.4
+            ls Scripts
+            bash ./Scripts/AWSMobileClientAPIReference.sh $currentversion
+
+      - run:
+          name: copy documents
+          command: |
+            git config --local user.name "AWS"
+            git checkout  gh-pages
+            mkdir docs/reference/AWSMobileClient
+            cp -R docs/api/* docs/reference/AWSMobileClient
+      - run:
+          name: checkin documents
+          command: |
+            zip -r documents.zip docs/reference
+
+            # git add docs/reference
+            # git commit -m "Update jazzy documentation for ${CIRCLE_TAG}"
+            # git push -q https://${GITHUB_TOKEN}@github.com/aws/aws-sdk-ios.git  
+      - store_artifacts:
+          path: documents.zip
+
+
   release_appledoc:
     # Specify the Xcode version to use
     macos:
@@ -141,7 +180,7 @@ workflows:
 
   test_workflow:
     jobs:
-        - release_appledoc
+        - release_jazzydoc
   build_and_test:
     jobs: 
       - build:
