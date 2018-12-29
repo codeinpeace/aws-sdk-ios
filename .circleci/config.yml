@@ -3,8 +3,9 @@
 # Check https://circleci.com/docs/2.0/ios-migrating-from-1-2/ for more details
 #
 version: 2.1
+
 commands:
-  skip_leftsteps_for_forked_pr:
+  early_return_for_forked_prs:
     description: >-
       If this build is from a fork, stop executing the current job and return success.
       This is useful to avoid steps that will fail due to missing credentials.
@@ -16,6 +17,7 @@ commands:
               echo "Nothing to do for forked PRs, so marking this step successful"
               circleci step halt
             fi
+
 jobs:
   build:
     macos: 
@@ -59,7 +61,7 @@ jobs:
     macos:
       xcode: "10.1.0"   
     steps:
-      - skip_leftsteps_for_forked_pr
+      - early_return_for_forked_prs
       - checkout 
       - run: 
           name: install json parser
@@ -192,6 +194,27 @@ jobs:
             git commit -m "Update jazzy documentation for ${CIRCLE_TAG}"
             git push -q https://${GITHUB_TOKEN}@github.com/aws/aws-sdk-ios.git  
 
+  run_ui_test:
+    # Specify the Xcode version to use
+    macos:
+      xcode: "10.1.0"
+    steps:
+      - early_return_for_forked_prs
+      - checkout
+      - run:
+          name: Run Sample UI Test
+          command: |
+            git clone https://github.com/awslabs/aws-sdk-ios-samples.git
+            rootDirectory=$(pwd)
+            cd aws-sdk-ios-samples/S3TransferUtility-Sample/Swift/
+            echo ${AWS_S3_TRANSFER_UTILITY_SAMPLE_APP_CONFIGURATION} | base64 --decode > awsconfiguration.json
+            sed -i "" "s+'~> 2.8.0'+:path => '../../../'+" Podfile
+            pod install
+            xcodebuild -workspace S3TransferUtilitySampleSwift.xcworkspace -scheme "S3TransferUtilitySampleSwiftUITests" -destination 'platform=iOS Simulator,name=iPhone 8 Plus,OS=11.2' test | tee $rootDirectory/raw_ui_test.log
+            cd $rootDirectory
+            rm -rf aws-sdk-ios-samples
+      - store_artifacts:
+          path: raw_ui_test.log
   add_doc_tag:
     macos:
       xcode: "10.1.0"  
@@ -207,16 +230,13 @@ jobs:
 
 workflows:
   version: 2
-  test_workflow:
-    jobs:
-      - integrationtest
 
   build_and_test:
     jobs: 
       - build:
           filters:
             branches:
-              ignore: /.*/
+              ignore: /gh-.*/
       - unittest:
           requires:
             - build
@@ -224,6 +244,12 @@ workflows:
             branches:
               ignore: /gh-.*/
       - integrationtest:
+          requires:
+            - build
+          filters:
+            branches:
+              ignore: /gh-.*/
+      - run_ui_test:
           requires:
             - build
           filters:
@@ -254,10 +280,19 @@ workflows:
               ignore: /.*/
             tags:
               only: /^[0-9]+.[0-9]+.[0-9]+$/              
+      - run_ui_test:
+          requires:
+            - build
+          filters:
+            branches:
+              ignore: /.*/
+            tags:
+              only: /^[0-9]+.[0-9]+.[0-9]+$/
       - release_carthage:
           requires:
             - unittest  
-            - integrationtest      
+            - integrationtest
+            - run_ui_test
           filters:
             branches:
               ignore: /.*/
@@ -267,6 +302,7 @@ workflows:
           requires:
             - unittest     
             - integrationtest    
+            - run_ui_test
           filters:
             branches:
               ignore: /.*/
@@ -276,6 +312,7 @@ workflows:
           requires:
             - unittest          
             - integrationtest
+            - run_ui_test
           filters:
             branches:
               ignore: /.*/

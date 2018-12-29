@@ -64,6 +64,11 @@ def runtest(otherargments, timeout = 0):
 ##########################  main function ###############################
 # a command will like 
 
+if (len(sys.argv) < 3 or sys.argv[1] == '-h' or sys.argv[1] == '-h') : 
+    print("Usage: \r\n {0} <integrationTestsConfiguration json file path> <test result location>".format(sys.argv[0])) ;
+    exit(1)
+
+
 jsonfilename=sys.argv[1]
 test_result_folder=sys.argv[2]
 
