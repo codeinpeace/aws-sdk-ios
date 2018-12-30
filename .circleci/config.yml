@@ -68,7 +68,7 @@ jobs:
           command: pip3 install demjson
       - run:
           name: create credentials
-          command: |
+          command: | 
             echo ${IOS_TESTS_CREDENTIALS_JSON}  | base64 --decode  > AWSCoreTests/Resources/credentials.json  
       - run :
           name: run integration tests
@@ -166,7 +166,7 @@ jobs:
             currentversion="1.2.3"
             pwd
             ls
-            bash Scripts/AWSMobileClientAPIRererence.sh $currentversion
+            bash Scripts/AWSMobileClientAPIReference.sh $currentversion
       - run:
           name: copy jazzy documents
           command: |
