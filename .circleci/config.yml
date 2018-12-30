@@ -113,25 +113,12 @@ jobs:
       - run:
           name: Create Carthage Archive
           command: bash CreateCarthageArchive.sh   
-      - run:
-          name: release the tag
-          command: |
-            tagdescription=$(sed -n '/## '${CIRCLE_TAG}'/,/## [0-9]*\.[0-9]*\.[0-9]/p'  CHANGELOG.md | sed '1d' | sed '$d')
-            tagname="AWS SDK for iOS "${CIRCLE_TAG}
-            github-release release -s ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME}  -t ${CIRCLE_TAG} -d "$tagdescription" -n "$tagname"         
-      - run:
-          name: upload file to git release 
-          command: github-release upload -s ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME}  -t ${CIRCLE_TAG} -f aws-sdk-ios-carthage.framework.zip -n aws-sdk-ios-carthage.framework.zip
-
   release_cocoapods:
     # Specify the Xcode version to use
     macos:
       xcode: "10.1.0"
     steps:
       - checkout  
-      - run:
-          name: Release cocoapods
-          command : python3    cocoapods_release.py
 
   release_appledoc:
     # Specify the Xcode version to use
@@ -163,8 +150,6 @@ jobs:
           command: |
             git add docs/reference
             git commit -m "Update appledoc documentation for ${CIRCLE_TAG}"
-            git push -q https://${GITHUB_TOKEN}@github.com/aws/aws-sdk-ios.git  
-
   release_jazzydoc:
     # Specify the Xcode version to use
     macos:
@@ -178,7 +163,9 @@ jobs:
       - run:
           name: generate jazzy documents
           command: |
-            currentversion=${CIRCLE_TAG}
+            currentversion="1.2.3"
+            pwd
+            ls
             bash ./Scripts/AWSMobileClientAPIRererence.sh $currentversion
       - run:
           name: copy jazzy documents
@@ -192,7 +179,6 @@ jobs:
           command: |
             git add docs/reference/AWSMobileClient
             git commit -m "Update jazzy documentation for ${CIRCLE_TAG}"
-            git push -q https://${GITHUB_TOKEN}@github.com/aws/aws-sdk-ios.git  
 
   run_ui_test:
     # Specify the Xcode version to use
@@ -226,17 +212,20 @@ jobs:
             git config --local user.name "AWS"
             git checkout  gh-pages
             git tag -a ${CIRCLE_TAG}_api_docs  -m "Add documentation tags to version ${CIRCLE_TAG}"
-            git push --tags -q https://${GITHUB_TOKEN}@github.com/aws-amplify/aws-sdk-ios.git   
 
 workflows:
   version: 2
+
+  test:
+    jobs:
+      - release_jazzydoc
 
   build_and_test:
     jobs: 
       - build:
           filters:
             branches:
-              ignore: /gh-.*/
+              only: /gh-.*/
       - unittest:
           requires:
             - build
@@ -261,78 +250,33 @@ workflows:
       - build:
           filters:
             branches:
-              ignore: /.*/
-            tags:
-              only: /^[0-9]+.[0-9]+.[0-9]+$/
+              only: /.*/
       - unittest:
           requires:
             - build
-          filters:
-            branches:
-              ignore: /.*/
-            tags:
-              only: /^[0-9]+.[0-9]+.[0-9]+$/
       - integrationtest:
           requires:
-            - build
-          filters:
-            branches:
-              ignore: /.*/
-            tags:
-              only: /^[0-9]+.[0-9]+.[0-9]+$/              
+            - build            
       - run_ui_test:
           requires:
             - build
-          filters:
-            branches:
-              ignore: /.*/
-            tags:
-              only: /^[0-9]+.[0-9]+.[0-9]+$/
       - release_carthage:
           requires:
             - unittest  
             - integrationtest
-            - run_ui_test
-          filters:
-            branches:
-              ignore: /.*/
-            tags:
-              only: /^[0-9]+.[0-9]+.[0-9]+$/
       - release_cocoapods:
           requires:
             - unittest     
             - integrationtest    
-            - run_ui_test
-          filters:
-            branches:
-              ignore: /.*/
-            tags:
-              only: /^[0-9]+.[0-9]+.[0-9]+$/
       - release_appledoc:
           requires:
             - unittest          
             - integrationtest
-            - run_ui_test
-          filters:
-            branches:
-              ignore: /.*/
-            tags:
-              only: /^[0-9]+.[0-9]+.[0-9]+$/
       - release_jazzydoc:
           requires:
             - release_appledoc          
-          filters:
-            branches:
-              ignore: /.*/
-            tags:
-              only: /^[0-9]+.[0-9]+.[0-9]+$/
       - add_doc_tag:
           requires:
             - release_jazzydoc          
-          filters:
-            branches:
-              ignore: /.*/
-            tags:
-              only: /^[0-9]+.[0-9]+.[0-9]+$/
 
 
