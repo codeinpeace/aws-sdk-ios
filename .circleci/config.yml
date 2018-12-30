@@ -166,7 +166,7 @@ jobs:
             currentversion="1.2.3"
             pwd
             ls
-            bash ./Scripts/AWSMobileClientAPIRererence.sh $currentversion
+            bash Scripts/AWSMobileClientAPIRererence.sh $currentversion
       - run:
           name: copy jazzy documents
           command: |
