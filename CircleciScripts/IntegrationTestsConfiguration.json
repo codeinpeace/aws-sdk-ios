@@ -9,6 +9,6 @@
 	} ,
 
 	'testList' : { 
-		'AWSSQSTests':{}
+		'AWSSQSTests':{} 
     }
 }
